@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -88,7 +89,7 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 	}
 
 	sentsByUser := make(map[string]int)
-	reviewsByUser := make(map[string]int)
+	reviewsByUser := new(sync.Map)
 
 	for _, pr := range prs {
 		if assignee := pr.GetAssignee(); assignee != nil {
@@ -105,7 +106,12 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 			if review.GetState() == "COMMENTED" {
 				continue
 			}
-			reviewsByUser[review.User.GetLogin()]++
+			reviewer := review.User.GetLogin()
+			if value, ok := reviewsByUser.Load(reviewer); ok {
+				reviewsByUser.Store(reviewer, value.(int)+1)
+			} else {
+				reviewsByUser.Store(reviewer, 0)
+			}
 		}
 	}
 
@@ -116,12 +122,15 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 		}
 		statsByUser[user].sentPullRequests = count
 	}
-	for user, count := range reviewsByUser {
-		if _, ok := statsByUser[user]; !ok {
-			statsByUser[user] = &workloadStat{user: user}
+	reviewsByUser.Range(func(key interface{}, value interface{}) bool {
+		reviewer := key.(string)
+		count := value.(int)
+		if _, ok := statsByUser[reviewer]; !ok {
+			statsByUser[reviewer] = &workloadStat{user: reviewer}
 		}
-		statsByUser[user].reviewedPullRequests = count
-	}
+		statsByUser[reviewer].reviewedPullRequests = count
+		return true
+	})
 
 	stats := make([]*workloadStat, 0, len(statsByUser))
 	for _, w := range statsByUser {
