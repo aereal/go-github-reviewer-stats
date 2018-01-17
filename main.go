@@ -81,6 +81,7 @@ func parseArgs() (*argsType, error) {
 }
 
 func collectStats(ctx context.Context, client *github.Client, owner, repo string, listOpts *github.PullRequestListOptions) ([]*workloadStat, error) {
+	log.Printf("Fetch pull request on %s/%s", owner, repo)
 	prs, _, err := client.PullRequests.List(ctx, owner, repo, listOpts)
 	if err != nil {
 		return nil, err
@@ -94,6 +95,7 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 			sentsByUser[assignee.GetLogin()]++
 		}
 
+		log.Printf("Fetch review on %s/%s#%d", owner, repo, pr.GetNumber())
 		reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, pr.GetNumber(), nil)
 		if err != nil {
 			continue
