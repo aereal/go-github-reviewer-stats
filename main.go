@@ -86,16 +86,12 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 		return nil, err
 	}
 
-	statsByUser := make(map[string]*workloadStat)
+	sentsByUser := make(map[string]int)
+	reviewsByUser := make(map[string]int)
 
 	for _, pr := range prs {
 		if assignee := pr.GetAssignee(); assignee != nil {
-			if _, ok := statsByUser[assignee.GetLogin()]; !ok {
-				statsByUser[assignee.GetLogin()] = &workloadStat{
-					user: assignee.GetLogin(),
-				}
-			}
-			statsByUser[assignee.GetLogin()].sentPullRequests++
+			sentsByUser[assignee.GetLogin()]++
 		}
 
 		reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, pr.GetNumber(), nil)
@@ -107,13 +103,22 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 			if review.GetState() == "COMMENTED" {
 				continue
 			}
-			if _, ok := statsByUser[review.User.GetLogin()]; !ok {
-				statsByUser[review.User.GetLogin()] = &workloadStat{
-					user: review.User.GetLogin(),
-				}
-			}
-			statsByUser[review.User.GetLogin()].reviewedPullRequests++
+			reviewsByUser[review.User.GetLogin()]++
 		}
+	}
+
+	statsByUser := make(map[string]*workloadStat)
+	for user, count := range sentsByUser {
+		if _, ok := statsByUser[user]; !ok {
+			statsByUser[user] = &workloadStat{user: user}
+		}
+		statsByUser[user].sentPullRequests = count
+	}
+	for user, count := range reviewsByUser {
+		if _, ok := statsByUser[user]; !ok {
+			statsByUser[user] = &workloadStat{user: user}
+		}
+		statsByUser[user].reviewedPullRequests = count
 	}
 
 	stats := make([]*workloadStat, 0, len(statsByUser))
