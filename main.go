@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 
 	"github.com/google/go-github/github"
@@ -46,7 +47,9 @@ func main() {
 	}
 	opts.PerPage = args.perPage
 
-	stats, err := collectStats(ctx, client, args.owner, args.repo, opts)
+	maxConcurrency := runtime.NumCPU()
+	runtime.GOMAXPROCS(maxConcurrency)
+	stats, err := collectStats(ctx, client, args.owner, args.repo, opts, maxConcurrency)
 	if err != nil {
 		log.Fatalf("Error: %s", err)
 	}
@@ -81,39 +84,49 @@ func parseArgs() (*argsType, error) {
 	return args, nil
 }
 
-func collectStats(ctx context.Context, client *github.Client, owner, repo string, listOpts *github.PullRequestListOptions) ([]*workloadStat, error) {
+func collectStats(ctx context.Context, client *github.Client, owner, repo string, listOpts *github.PullRequestListOptions, maxConcurrency int) ([]*workloadStat, error) {
 	log.Printf("Fetch pull request on %s/%s", owner, repo)
 	prs, _, err := client.PullRequests.List(ctx, owner, repo, listOpts)
 	if err != nil {
 		return nil, err
 	}
 
+	semaphore := make(chan int, maxConcurrency)
+
 	sentsByUser := make(map[string]int)
 	reviewsByUser := new(sync.Map)
 
+	var wg sync.WaitGroup
 	for _, pr := range prs {
 		if assignee := pr.GetAssignee(); assignee != nil {
 			sentsByUser[assignee.GetLogin()]++
 		}
 
-		log.Printf("Fetch review on %s/%s#%d", owner, repo, pr.GetNumber())
-		reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, pr.GetNumber(), nil)
-		if err != nil {
-			continue
-		}
+		wg.Add(1)
+		go func(pr *github.PullRequest) {
+			defer wg.Done()
+			semaphore <- 1
+			log.Printf("Fetch review on %s/%s#%d", owner, repo, pr.GetNumber())
+			reviews, _, err := client.PullRequests.ListReviews(ctx, owner, repo, pr.GetNumber(), nil)
+			if err != nil {
+				return
+			}
 
-		for _, review := range reviews {
-			if review.GetState() == "COMMENTED" {
-				continue
+			for _, review := range reviews {
+				if review.GetState() == "COMMENTED" {
+					continue
+				}
+				reviewer := review.User.GetLogin()
+				if value, ok := reviewsByUser.Load(reviewer); ok {
+					reviewsByUser.Store(reviewer, value.(int)+1)
+				} else {
+					reviewsByUser.Store(reviewer, 0)
+				}
 			}
-			reviewer := review.User.GetLogin()
-			if value, ok := reviewsByUser.Load(reviewer); ok {
-				reviewsByUser.Store(reviewer, value.(int)+1)
-			} else {
-				reviewsByUser.Store(reviewer, 0)
-			}
-		}
+			<-semaphore
+		}(pr)
 	}
+	wg.Wait()
 
 	statsByUser := make(map[string]*workloadStat)
 	for user, count := range sentsByUser {
