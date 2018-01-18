@@ -98,7 +98,7 @@ func collectStats(ctx context.Context, client *github.Client, owner, repo string
 
 	var wg sync.WaitGroup
 	for _, pr := range prs {
-		if assignee := pr.GetAssignee(); assignee != nil {
+		for _, assignee := range pr.Assignees {
 			sentsByUser[assignee.GetLogin()]++
 		}
 
