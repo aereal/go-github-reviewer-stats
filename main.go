@@ -54,10 +54,8 @@ func main() {
 		log.Fatalf("Error: %s", err)
 	}
 
-	fmt.Printf("user\tdone\treviewed\n")
-	for _, w := range stats {
-		fmt.Printf("%s\t%d\t%d\n", w.user, w.sentPullRequests, w.reviewedPullRequests)
-	}
+	fmtr := newTsvFormatter()
+	fmtr.output(os.Stdout, stats)
 }
 
 func parseArgs() (*argsType, error) {
