@@ -16,6 +16,11 @@ import (
 )
 
 const (
+	OUTPUT_TSV   string = "tsv"
+	OUTPUT_SENSU string = "sensu"
+)
+
+const (
 	defaultBaseURL = "https://api.github.com"
 )
 
@@ -25,6 +30,7 @@ type argsType struct {
 	perPage            int
 	insecureSkipVerify bool
 	baseURL            string
+	format             string
 }
 
 func main() {
@@ -54,7 +60,10 @@ func main() {
 		log.Fatalf("Error: %s", err)
 	}
 
-	fmtr := newTsvFormatter()
+	fmtr, err := buildFormatterFor(args.format)
+	if err != nil {
+		log.Fatalf("Error: %s", err)
+	}
 	fmtr.output(os.Stdout, stats)
 }
 
@@ -65,6 +74,7 @@ func parseArgs() (*argsType, error) {
 	flag.IntVar(&args.perPage, "per-page", 10, "count of pull requests to scan")
 	flag.BoolVar(&args.insecureSkipVerify, "insecure-skip-verify", false, "skip verification of cert")
 	flag.StringVar(&args.baseURL, "base-url", defaultBaseURL, "custom GitHub base URL if you use GitHub Enterprise")
+	flag.StringVar(&args.format, "format", OUTPUT_TSV, "specify output format (tsv or mackerel)")
 	flag.Parse()
 
 	if args.owner == "" {
