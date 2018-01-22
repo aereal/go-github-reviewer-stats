@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+version="$1"
+if [[ -z "$version" ]]; then
+  echo '! version must be given' >&2
+  exit 1
+fi
+
+goxz -z -d "dist/${version}" -os linux,darwin
+ghr -u aereal -r go-github-reviewer-stats "$version" "dist/${version}"
