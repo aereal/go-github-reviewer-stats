@@ -8,5 +8,13 @@ if [[ -z "$version" ]]; then
   exit 1
 fi
 
+if ! which goxz >/dev/null 2>&1; then
+  go get -u github.com//Songmu/goxz/cmd/goxz
+fi
+
+if ! which ghr >/dev/null 2>&1; then
+  brew install tcnksm/ghr/ghr
+fi
+
 goxz -z -d "dist/${version}" -os linux,darwin
 ghr -u aereal -r go-github-reviewer-stats "$version" "dist/${version}"
