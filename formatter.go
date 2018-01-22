@@ -16,6 +16,9 @@ func buildFormatterFor(format string, metricPrefix string) (formatter, error) {
 		fmtr := newTsvFormatter()
 		return fmtr, nil
 	case OUTPUT_SENSU:
+		if metricPrefix == "" {
+			return nil, fmt.Errorf("metricPrefix should not be empty")
+		}
 		fmtr := newSensuFormatter(metricPrefix)
 		return fmtr, nil
 	default:

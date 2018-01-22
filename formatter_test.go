@@ -31,7 +31,12 @@ func TestBuildFormatterFor(t *testing.T) {
 		}
 	}
 
-	fmtr, err = buildFormatterFor("unknown", "")
+	_, err = buildFormatterFor("sensu", "")
+	if err == nil || err.Error() != "metricPrefix should not be empty" {
+		t.Errorf("sensuFormatter should require non-empty prefix")
+	}
+
+	_, err = buildFormatterFor("unknown", "")
 	if err == nil {
 		t.Errorf("should die if unknown format given")
 	}
