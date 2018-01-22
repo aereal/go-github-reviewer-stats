@@ -10,13 +10,13 @@ type formatter interface {
 	output(out io.Writer, stats []*workloadStat)
 }
 
-func buildFormatterFor(format string) (formatter, error) {
+func buildFormatterFor(format string, metricPrefix string) (formatter, error) {
 	switch format {
 	case OUTPUT_TSV:
 		fmtr := newTsvFormatter()
 		return fmtr, nil
 	case OUTPUT_SENSU:
-		fmtr := newSensuFormatter("pull_requests")
+		fmtr := newSensuFormatter(metricPrefix)
 		return fmtr, nil
 	default:
 		return nil, fmt.Errorf("Unknown format: %s", format)

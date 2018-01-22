@@ -31,6 +31,7 @@ type argsType struct {
 	insecureSkipVerify bool
 	baseURL            string
 	format             string
+	metricPrefix       string
 }
 
 func main() {
@@ -60,7 +61,7 @@ func main() {
 		log.Fatalf("Error: %s", err)
 	}
 
-	fmtr, err := buildFormatterFor(args.format)
+	fmtr, err := buildFormatterFor(args.format, args.metricPrefix)
 	if err != nil {
 		log.Fatalf("Error: %s", err)
 	}
@@ -75,6 +76,7 @@ func parseArgs() (*argsType, error) {
 	flag.BoolVar(&args.insecureSkipVerify, "insecure-skip-verify", false, "skip verification of cert")
 	flag.StringVar(&args.baseURL, "base-url", defaultBaseURL, "custom GitHub base URL if you use GitHub Enterprise")
 	flag.StringVar(&args.format, "format", OUTPUT_TSV, "specify output format (tsv or mackerel)")
+	flag.StringVar(&args.metricPrefix, "metric-prefix", "pull_requests", "prefix name of Mackerel service metrics (available only sensu format)")
 	flag.Parse()
 
 	if args.owner == "" {
