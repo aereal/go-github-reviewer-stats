@@ -3,7 +3,7 @@
 ## Usage
 
 ```
-✘╹◡╹✘ < ./go-github-reviewer-stats --help
+✘╹◡╹✘ < go run ./... --help
 Usage of ./go-github-reviewer-stats:
   -base-url string
         custom GitHub base URL if you use GitHub Enterprise (default "https://api.github.com")
@@ -15,11 +15,4 @@ Usage of ./go-github-reviewer-stats:
         count of pull requests to scan (default 10)
   -repo string
         repo name
-```
-
-## Build
-
-```sh
-dep ensure
-go build ./...
 ```
